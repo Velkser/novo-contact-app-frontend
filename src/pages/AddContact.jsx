@@ -10,97 +10,220 @@ export default function AddContact() {
     name: '',
     phone: '',
     email: '',
-    company: ''
+    company: '',
+    script: '',
+    tags: []
   })
+  const [newTag, setNewTag] = useState('')
+  const [errors, setErrors] = useState({})
+
+  const validateForm = () => {
+    const newErrors = {}
+    
+    if (!formData.name.trim()) {
+      newErrors.name = 'Meno je povinné'
+    }
+    
+    if (!formData.phone.trim()) {
+      newErrors.phone = 'Telefón je povinný'
+    } else if (!/^[\+]?[0-9\s\-\(\)]+$/.test(formData.phone)) {
+      newErrors.phone = 'Neplatné telefónne číslo'
+    }
+    
+    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = 'Neplatný email'
+    }
+    
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
 
   const handleChange = (e) => {
+    const { name, value } = e.target
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [name]: value
+    })
+    
+    // Очищаем ошибку при изменении поля
+    if (errors[name]) {
+      setErrors({
+        ...errors,
+        [name]: ''
+      })
+    }
+  }
+
+  const handleAddTag = (e) => {
+    e.preventDefault()
+    if (newTag.trim() && !formData.tags.includes(newTag.trim())) {
+      setFormData({
+        ...formData,
+        tags: [...formData.tags, newTag.trim()]
+      })
+      setNewTag('')
+    }
+  }
+
+  const handleRemoveTag = (tagToRemove) => {
+    setFormData({
+      ...formData,
+      tags: formData.tags.filter(tag => tag !== tagToRemove)
     })
   }
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    addContact(formData)
-    navigate('/')
+    if (validateForm()) {
+      addContact({
+        ...formData,
+        tags: formData.tags
+      })
+      navigate('/')
+    }
   }
 
   return (
     <div className="max-w-2xl mx-auto">
-      <h1 className="text-2xl font-bold text-gray-800 mb-6">Pridať nový kontakt</h1>
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">Pridať nový kontakt</h1>
+        <p className="text-gray-600">Vyplňte údaje o kontakte</p>
+      </div>
       
-      <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow-md space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Meno a priezvisko *
-          </label>
-          <input
-            type="text"
-            name="name"
-            value={formData.name}
-            onChange={handleChange}
-            required
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Meno a priezvisko *
+            </label>
+            <input
+              type="text"
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
+              className={`input-field ${errors.name ? 'border-red-500' : ''}`}
+              placeholder="Napr. Ján Novák"
+            />
+            {errors.name && (
+              <p className="mt-1 text-sm text-red-600">{errors.name}</p>
+            )}
+          </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Telefónne číslo *
-          </label>
-          <input
-            type="tel"
-            name="phone"
-            value={formData.phone}
-            onChange={handleChange}
-            required
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Telefónne číslo *
+            </label>
+            <input
+              type="tel"
+              name="phone"
+              value={formData.phone}
+              onChange={handleChange}
+              className={`input-field ${errors.phone ? 'border-red-500' : ''}`}
+              placeholder="Napr. +421 901 234 567"
+            />
+            {errors.phone && (
+              <p className="mt-1 text-sm text-red-600">{errors.phone}</p>
+            )}
+          </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Email
-          </label>
-          <input
-            type="email"
-            name="email"
-            value={formData.email}
-            onChange={handleChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Email
+            </label>
+            <input
+              type="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              className={`input-field ${errors.email ? 'border-red-500' : ''}`}
+              placeholder="Napr. jan.novak@example.com"
+            />
+            {errors.email && (
+              <p className="mt-1 text-sm text-red-600">{errors.email}</p>
+            )}
+          </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Spoločnosť
-          </label>
-          <input
-            type="text"
-            name="company"
-            value={formData.company}
-            onChange={handleChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Spoločnosť
+            </label>
+            <input
+              type="text"
+              name="company"
+              value={formData.company}
+              onChange={handleChange}
+              className="input-field"
+              placeholder="Napr. ABC s.r.o."
+            />
+          </div>
 
-        <div className="flex space-x-4 pt-4">
-          <button
-            type="button"
-            onClick={() => navigate('/')}
-            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition"
-          >
-            Späť
-          </button>
-          <button
-            type="submit"
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
-          >
-            Pridať kontakt
-          </button>
-        </div>
-      </form>
+          {/* Теги */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Tagy
+            </label>
+            <div className="flex flex-wrap gap-2 mb-3">
+              {formData.tags.map((tag, index) => (
+                <span key={index} className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800">
+                  {tag}
+                  <button 
+                    type="button"
+                    onClick={() => handleRemoveTag(tag)}
+                    className="ml-2 text-purple-600 hover:text-purple-900"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+            <form onSubmit={handleAddTag} className="flex gap-2">
+              <input
+                type="text"
+                value={newTag}
+                onChange={(e) => setNewTag(e.target.value)}
+                placeholder="Pridať tag..."
+                className="input-field text-sm py-1 px-3 flex-1"
+              />
+              <button
+                type="submit"
+                className="px-3 py-1 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 transition-colors"
+              >
+                +
+              </button>
+            </form>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Agent Script (voliteľné)
+            </label>
+            <textarea
+              name="script"
+              value={formData.script}
+              onChange={handleChange}
+              rows={4}
+              className="input-field"
+              placeholder="Napíšte skript, ktorý bude agent používať pri hovore..."
+            />
+          </div>
+
+          <div className="flex space-x-4 pt-6">
+            <button
+              type="button"
+              onClick={() => navigate('/')}
+              className="btn btn-secondary"
+            >
+              Späť
+            </button>
+            <button
+              type="submit"
+              className="btn btn-primary"
+            >
+              Pridať kontakt
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   )
 }
