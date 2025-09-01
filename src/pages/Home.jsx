@@ -1,11 +1,18 @@
-import { useState } from 'react'
+// src/pages/Home.jsx
+import { useState, useEffect } from 'react'
 import ContactList from '../components/ContactList'
 import useContactStore from '../store/useContactStore'
 import { Link } from 'react-router-dom'
 
 export default function Home() {
   const contacts = useContactStore((state) => state.contacts)
+  const fetchContacts = useContactStore((state) => state.fetchContacts) // ← Добавлено
   const [searchTerm, setSearchTerm] = useState('')
+
+  // ← Добавлено: загрузка контактов при монтировании
+  useEffect(() => {
+    fetchContacts()
+  }, [fetchContacts])
 
   // Фильтрация контактов
   const filteredContacts = contacts.filter(contact => {

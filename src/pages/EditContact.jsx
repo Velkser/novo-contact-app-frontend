@@ -1,3 +1,4 @@
+// src/pages/EditContact.jsx
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import useContactStore from '../store/useContactStore'
@@ -7,6 +8,10 @@ export default function EditContact() {
   const { id } = useParams()
   const contacts = useContactStore((state) => state.contacts)
   const updateContact = useContactStore((state) => state.updateContact)
+  const promptTemplates = useContactStore((state) => state.promptTemplates)
+  const fetchPromptTemplates = useContactStore((state) => state.fetchPromptTemplates)
+  const loading = useContactStore((state) => state.loading)
+  const error = useContactStore((state) => state.error)
   
   const [formData, setFormData] = useState({
     name: '',
@@ -18,6 +23,11 @@ export default function EditContact() {
   })
   const [newTag, setNewTag] = useState('')
   const [errors, setErrors] = useState({})
+
+  // Загружаем шаблоны при монтировании
+  useEffect(() => {
+    fetchPromptTemplates()
+  }, [fetchPromptTemplates])
 
   useEffect(() => {
     const contact = contacts.find(c => c.id === parseInt(id))
@@ -90,13 +100,21 @@ export default function EditContact() {
     })
   }
 
+  // Функция для применения шаблона
+  const handleApplyTemplate = (templateId) => {
+    const template = promptTemplates.find(t => t.id === templateId)
+    if (template) {
+      setFormData({
+        ...formData,
+        script: template.content
+      })
+    }
+  }
+
   const handleSubmit = (e) => {
     e.preventDefault()
     if (validateForm()) {
-      updateContact(parseInt(id), {
-        ...formData,
-        tags: formData.tags
-      })
+      updateContact(parseInt(id), formData)
       navigate('/')
     }
   }
@@ -120,6 +138,12 @@ export default function EditContact() {
       </div>
       
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+        {error && (
+          <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg">
+            {error}
+          </div>
+        )}
+        
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -132,6 +156,7 @@ export default function EditContact() {
               onChange={handleChange}
               className={`input-field ${errors.name ? 'border-red-500' : ''}`}
               placeholder="Napr. Ján Novák"
+              disabled={loading}
             />
             {errors.name && (
               <p className="mt-1 text-sm text-red-600">{errors.name}</p>
@@ -149,6 +174,7 @@ export default function EditContact() {
               onChange={handleChange}
               className={`input-field ${errors.phone ? 'border-red-500' : ''}`}
               placeholder="Napr. +421 901 234 567"
+              disabled={loading}
             />
             {errors.phone && (
               <p className="mt-1 text-sm text-red-600">{errors.phone}</p>
@@ -166,6 +192,7 @@ export default function EditContact() {
               onChange={handleChange}
               className={`input-field ${errors.email ? 'border-red-500' : ''}`}
               placeholder="Napr. jan.novak@example.com"
+              disabled={loading}
             />
             {errors.email && (
               <p className="mt-1 text-sm text-red-600">{errors.email}</p>
@@ -183,8 +210,33 @@ export default function EditContact() {
               onChange={handleChange}
               className="input-field"
               placeholder="Napr. ABC s.r.o."
+              disabled={loading}
             />
           </div>
+
+          {/* Выбор шаблона */}
+          {promptTemplates.length > 0 && (
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Vybrať šablónu (voliteľné)
+              </label>
+              <select
+                onChange={(e) => handleApplyTemplate(parseInt(e.target.value))}
+                className="input-field"
+                value=""
+              >
+                <option value="">-- Vyberte šablónu --</option>
+                {promptTemplates.map(template => (
+                  <option key={template.id} value={template.id}>
+                    {template.name}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-sm text-gray-500">
+                Môžete vybrať existujúcu šablónu alebo upraviť aktuálny skript nižšie
+              </p>
+            </div>
+          )}
 
           {/* Теги */}
           <div>
@@ -199,27 +251,31 @@ export default function EditContact() {
                     type="button"
                     onClick={() => handleRemoveTag(tag)}
                     className="ml-2 text-purple-600 hover:text-purple-900"
+                    disabled={loading}
                   >
                     ×
                   </button>
                 </span>
               ))}
             </div>
-            <form onSubmit={handleAddTag} className="flex gap-2">
-              <input
-                type="text"
-                value={newTag}
-                onChange={(e) => setNewTag(e.target.value)}
-                placeholder="Pridať tag..."
-                className="input-field text-sm py-1 px-3 flex-1"
-              />
-              <button
-                type="submit"
-                className="px-3 py-1 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 transition-colors"
-              >
-                +
-              </button>
-            </form>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newTag}
+                  onChange={(e) => setNewTag(e.target.value)}
+                  placeholder="Pridať tag..."
+                  className="input-field text-sm py-1 px-3 flex-1"
+                  disabled={loading}
+                />
+                <button
+                  type="button"
+                  onClick={handleAddTag}
+                  className="px-3 py-1 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 transition-colors disabled:opacity-50"
+                  disabled={loading}
+                >
+                  +
+                </button>
+            </div>
           </div>
 
           <div>
@@ -230,9 +286,10 @@ export default function EditContact() {
               name="script"
               value={formData.script}
               onChange={handleChange}
-              rows={4}
+              rows={6}
               className="input-field"
-              placeholder="Napíšte skript, ktorý bude agent používať pri hovore..."
+              placeholder="Napíšte skript, ktorý bude agent používať pri hovore... alebo vyberte šablónu vyššie"
+              disabled={loading}
             />
           </div>
 
@@ -241,14 +298,16 @@ export default function EditContact() {
               type="button"
               onClick={() => navigate('/')}
               className="btn btn-secondary"
+              disabled={loading}
             >
               Späť
             </button>
             <button
               type="submit"
-              className="btn btn-success"
+              className="btn btn-success disabled:opacity-50"
+              disabled={loading}
             >
-              Uložiť zmeny
+              {loading ? 'Ukladá sa...' : 'Uložiť zmeny'}
             </button>
           </div>
         </form>

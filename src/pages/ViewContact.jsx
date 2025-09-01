@@ -1,4 +1,5 @@
-import { useState } from 'react'
+// src/pages/ViewContact.jsx
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import useContactStore from '../store/useContactStore'
 import { Link } from 'react-router-dom'
@@ -20,32 +21,54 @@ export default function ViewContact() {
   const navigate = useNavigate()
   const { id } = useParams()
   const contacts = useContactStore((state) => state.contacts)
-  const updateContactScript = useContactStore((state) => state.updateContactScript)
+  const updateContact = useContactStore((state) => state.updateContact)
   const addTag = useContactStore((state) => state.addTag)
   const removeTag = useContactStore((state) => state.removeTag)
+  const promptTemplates = useContactStore((state) => state.promptTemplates)
+  const fetchPromptTemplates = useContactStore((state) => state.fetchPromptTemplates)
   
   const contact = contacts.find(c => c.id === parseInt(id))
   const [isEditingScript, setIsEditingScript] = useState(false)
   const [scriptText, setScriptText] = useState(contact?.script || '')
   const [newTag, setNewTag] = useState('')
 
-  const handleSaveScript = () => {
-    updateContactScript(parseInt(id), scriptText)
-    setIsEditingScript(false)
-  }
+  // Загружаем шаблоны при монтировании компонента
+  useEffect(() => {
+    fetchPromptTemplates()
+  }, [fetchPromptTemplates])
 
-  const handleAddTag = (e) => {
-    e.preventDefault()
-    if (newTag.trim() && !contact.tags.includes(newTag.trim())) {
-      addTag(contact.id, newTag.trim())
-      setNewTag('')
+  const handleSaveScript = async () => {
+    try {
+      await updateContact(contact.id, {
+        ...contact,
+        script: scriptText
+      })
+      setIsEditingScript(false)
+    } catch (error) {
+      console.error('Error updating script:', error)
     }
   }
 
-  const handleRemoveTag = (tag) => {
-     if (contact.tags.length > 1 || window.confirm('Naozaj chcete odstrániť tento tag?')) {
-    removeTag(contact.id, tag)
+  const handleAddTag = async (e) => {
+    e.preventDefault()
+    if (newTag.trim() && contact) {
+      try {
+        await addTag(contact.id, newTag.trim())
+        setNewTag('')
+      } catch (error) {
+        console.error('Error adding tag:', error)
+      }
+    }
   }
+
+  const handleRemoveTag = async (tag) => {
+    if (contact) {
+      try {
+        await removeTag(contact.id, tag)
+      } catch (error) {
+        console.error('Error removing tag:', error)
+      }
+    }
   }
 
   if (!contact) {
@@ -133,7 +156,7 @@ export default function ViewContact() {
                 </div>
                 
                 {/* Форма добавления тега */}
-                <form onSubmit={handleAddTag} className="mt-3 flex gap-2">
+                <div className="mt-3 flex gap-2">
                   <input
                     type="text"
                     value={newTag}
@@ -142,12 +165,13 @@ export default function ViewContact() {
                     className="input-field text-sm py-1 px-3 w-32"
                   />
                   <button
-                    type="submit"
+                    type="button"
+                    onClick={handleAddTag}
                     className="px-3 py-1 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 transition-colors"
                   >
                     +
                   </button>
-                </form>
+                </div>
               </div>
             </div>
           </div>
@@ -283,6 +307,32 @@ export default function ViewContact() {
             
             {isEditingScript ? (
               <div className="space-y-4">
+                {/* Выбор шаблона */}
+                {promptTemplates.length > 0 && (
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Vybrať zo šablóny
+                    </label>
+                    <select
+                      onChange={(e) => {
+                        const template = promptTemplates.find(t => t.id === parseInt(e.target.value))
+                        if (template) {
+                          setScriptText(template.content)
+                        }
+                      }}
+                      className="input-field"
+                      value=""
+                    >
+                      <option value="">-- Vyberte šablónu --</option>
+                      {promptTemplates.map(template => (
+                        <option key={template.id} value={template.id}>
+                          {template.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                
                 <textarea
                   value={scriptText}
                   onChange={(e) => setScriptText(e.target.value)}
