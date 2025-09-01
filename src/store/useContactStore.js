@@ -321,6 +321,131 @@ const useContactStore = create(
           throw error;
         }
       },
+      // Scheduled calls state
+      scheduledCalls: [],
+
+      // Scheduled calls actions
+      fetchScheduledCalls: async () => {
+        try {
+          set({ loading: true, error: null });
+          const response = await fetch('http://localhost:8000/api/scheduled-calls/', {
+            credentials: 'include',
+          });
+          
+          if (!response.ok) {
+            throw new Error('Failed to fetch scheduled calls');
+          }
+          
+          const calls = await response.json();
+          set({ scheduledCalls: calls, loading: false });
+        } catch (error) {
+          console.error('Error fetching scheduled calls:', error);
+          set({ error: error.message, loading: false });
+        }
+      },
+
+      fetchUpcomingCalls: async () => {
+        try {
+          set({ loading: true, error: null });
+          const response = await fetch('http://localhost:8000/api/scheduled-calls/upcoming', {
+            credentials: 'include',
+          });
+          
+          if (!response.ok) {
+            throw new Error('Failed to fetch upcoming calls');
+          }
+          
+          const calls = await response.json();
+          set({ scheduledCalls: calls, loading: false });
+        } catch (error) {
+          console.error('Error fetching upcoming calls:', error);
+          set({ error: error.message, loading: false });
+        }
+      },
+
+      addScheduledCall: async (callData) => {
+        try {
+          set({ loading: true, error: null });
+          const response = await fetch('http://localhost:8000/api/scheduled-calls/', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(callData),
+            credentials: 'include',
+          });
+          
+          if (!response.ok) {
+            throw new Error('Failed to schedule call');
+          }
+          
+          const newCall = await response.json();
+          set((state) => ({
+            scheduledCalls: [...state.scheduledCalls, newCall],
+            loading: false
+          }));
+          return newCall;
+        } catch (error) {
+          set({ error: error.message, loading: false });
+          throw error;
+        }
+      },
+
+      updateScheduledCall: async (id, updatedCall) => {
+         try {
+          console.log('Sending update request:', updatedCall); // Для отладки
+          set({ loading: true, error: null });
+          const response = await fetch(`http://localhost:8000/api/scheduled-calls/${id}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(updatedCall),
+            credentials: 'include',
+          });
+          
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Server response:', errorText);
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
+          }
+          
+          const call = await response.json();
+          set((state) => ({
+            scheduledCalls: state.scheduledCalls.map((c) => 
+              c.id === id ? call : c
+            ),
+            loading: false
+          }));
+          return call;
+        } catch (error) {
+          console.error('Error in updateScheduledCall:', error);
+          set({ error: error.message, loading: false });
+          throw error;
+        }
+      },
+
+      deleteScheduledCall: async (id) => {
+        try {
+          set({ loading: true, error: null });
+          const response = await fetch(`http://localhost:8000/api/scheduled-calls/${id}`, {
+            method: 'DELETE',
+            credentials: 'include',
+          });
+          
+          if (!response.ok) {
+            throw new Error('Failed to delete scheduled call');
+          }
+          
+          set((state) => ({
+            scheduledCalls: state.scheduledCalls.filter((c) => c.id !== id),
+            loading: false
+          }));
+        } catch (error) {
+          set({ error: error.message, loading: false });
+          throw error;
+        }
+      },
     }),
     {
       name: 'contact-storage',

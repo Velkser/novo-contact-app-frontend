@@ -10,6 +10,10 @@ import Login from './pages/Login'
 import Register from './pages/Register'
 import PromptTemplates from './pages/PromptTemplates'
 import useContactStore from './store/useContactStore'
+import ScheduleCall from './pages/ScheduleCall'
+import ScheduledCalls from './pages/ScheduledCalls'
+
+
 
 function App() {
   const [isLoading, setIsLoading] = useState(true)
@@ -77,6 +81,18 @@ function App() {
             <Route 
               path="/prompt-templates" 
               element={isAuthenticated ? <PromptTemplates /> : <Navigate to="/login" />} 
+            />
+            <Route 
+              path="/scheduled-calls" 
+              element={isAuthenticated ? <ScheduledCalls /> : <Navigate to="/login" />} 
+            />
+            <Route 
+              path="/schedule-call" 
+              element={isAuthenticated ? <ScheduleCall /> : <Navigate to="/login" />} 
+            />
+            <Route 
+              path="/schedule-call/:contactId" 
+              element={isAuthenticated ? <ScheduleCall /> : <Navigate to="/login" />} 
             />
           </Routes>
         </main>

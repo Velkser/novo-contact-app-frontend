@@ -267,6 +267,15 @@ export default function ViewContact() {
                   </svg>
                   <span>Zavolať</span>
                 </button>
+                <Link
+                  to={`/schedule-call/${contact.id}`}
+                  className="w-full text-left px-4 py-3 rounded-lg hover:bg-white transition-colors flex items-center space-x-3"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
+                  </svg>
+                  <span>Naplánovať hovor</span>
+                </Link>
                 <button className="w-full text-left px-4 py-3 rounded-lg hover:bg-white transition-colors flex items-center space-x-3">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M18 5v8a2 2 0 01-2 2h-5l-5 4v-4H4a2 2 0 01-2-2V5a2 2 0 012-2h12a2 2 0 012 2zM7 8H5v2h2V8zm2 0h2v2H9V8zm6 0h-2v2h2V8z" clipRule="evenodd" />
