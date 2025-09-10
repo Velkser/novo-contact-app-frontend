@@ -8,15 +8,18 @@ const useContactStore = create(
       // Auth state
       user: null,
       isAuthenticated: false,
+      loading: false,
+      error: null,
       
       // Contacts state
       contacts: [],
-      loading: false,
-      error: null,
       
       // Prompt templates state
       promptTemplates: [],
       
+      // Scheduled calls state
+      scheduledCalls: [],
+
       // Auth actions
       login: async (credentials) => {
         try {
@@ -57,7 +60,8 @@ const useContactStore = create(
             user: null, 
             isAuthenticated: false, 
             contacts: [],
-            promptTemplates: []
+            promptTemplates: [],
+            scheduledCalls: []
           });
         }
       },
@@ -119,7 +123,8 @@ const useContactStore = create(
           });
           
           if (!response.ok) {
-            throw new Error('Failed to add contact');
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.detail || 'Failed to add contact');
           }
           
           const newContact = await response.json();
@@ -152,7 +157,8 @@ const useContactStore = create(
           });
           
           if (!response.ok) {
-            throw new Error('Failed to update contact');
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.detail || 'Failed to update contact');
           }
           
           const contact = await response.json();
@@ -183,7 +189,8 @@ const useContactStore = create(
           });
           
           if (!response.ok) {
-            throw new Error('Failed to delete contact');
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.detail || 'Failed to delete contact');
           }
           
           set((state) => ({
@@ -232,7 +239,8 @@ const useContactStore = create(
           });
           
           if (!response.ok) {
-            throw new Error('Failed to fetch prompt templates');
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.detail || 'Failed to fetch prompt templates');
           }
           
           const templates = await response.json();
@@ -255,7 +263,8 @@ const useContactStore = create(
           });
           
           if (!response.ok) {
-            throw new Error('Failed to add prompt template');
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.detail || 'Failed to add prompt template');
           }
           
           const newTemplate = await response.json();
@@ -283,7 +292,8 @@ const useContactStore = create(
           });
           
           if (!response.ok) {
-            throw new Error('Failed to update prompt template');
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.detail || 'Failed to update prompt template');
           }
           
           const template = await response.json();
@@ -309,7 +319,8 @@ const useContactStore = create(
           });
           
           if (!response.ok) {
-            throw new Error('Failed to delete prompt template');
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.detail || 'Failed to delete prompt template');
           }
           
           set((state) => ({
@@ -321,9 +332,7 @@ const useContactStore = create(
           throw error;
         }
       },
-      // Scheduled calls state
-      scheduledCalls: [],
-
+      
       // Scheduled calls actions
       fetchScheduledCalls: async () => {
         try {
@@ -333,7 +342,8 @@ const useContactStore = create(
           });
           
           if (!response.ok) {
-            throw new Error('Failed to fetch scheduled calls');
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.detail || 'Failed to fetch scheduled calls');
           }
           
           const calls = await response.json();
@@ -352,7 +362,8 @@ const useContactStore = create(
           });
           
           if (!response.ok) {
-            throw new Error('Failed to fetch upcoming calls');
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.detail || 'Failed to fetch upcoming calls');
           }
           
           const calls = await response.json();
@@ -366,6 +377,9 @@ const useContactStore = create(
       addScheduledCall: async (callData) => {
         try {
           set({ loading: true, error: null });
+          
+          console.log('Sending scheduled call data:', callData);
+          
           const response = await fetch('http://localhost:8000/api/scheduled-calls/', {
             method: 'POST',
             headers: {
@@ -375,8 +389,19 @@ const useContactStore = create(
             credentials: 'include',
           });
           
+          // Проверяем статус ответа
           if (!response.ok) {
-            throw new Error('Failed to schedule call');
+            // Получаем детали ошибки
+            let errorDetail = 'Failed to schedule call';
+            try {
+              const errorData = await response.json();
+              errorDetail = errorData.detail || errorData.message || JSON.stringify(errorData);
+            } catch (parseError) {
+              errorDetail = `HTTP ${response.status}: ${response.statusText}`;
+            }
+            
+            console.error('Server error response:', await response.text().catch(() => ''));
+            throw new Error(errorDetail);
           }
           
           const newCall = await response.json();
@@ -386,28 +411,27 @@ const useContactStore = create(
           }));
           return newCall;
         } catch (error) {
+          console.error('Error scheduling call:', error);
           set({ error: error.message, loading: false });
           throw error;
         }
       },
 
-      updateScheduledCall: async (id, updatedCall) => {
-         try {
-          console.log('Sending update request:', updatedCall); // Для отладки
+      updateScheduledCall: async (id, callData) => {
+        try {
           set({ loading: true, error: null });
           const response = await fetch(`http://localhost:8000/api/scheduled-calls/${id}`, {
             method: 'PUT',
             headers: {
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify(updatedCall),
+            body: JSON.stringify(callData),
             credentials: 'include',
           });
           
           if (!response.ok) {
-            const errorText = await response.text();
-            console.error('Server response:', errorText);
-            throw new Error(`HTTP ${response.status}: ${errorText}`);
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.detail || 'Failed to update scheduled call');
           }
           
           const call = await response.json();
@@ -419,7 +443,7 @@ const useContactStore = create(
           }));
           return call;
         } catch (error) {
-          console.error('Error in updateScheduledCall:', error);
+          console.error('Error updating scheduled call:', error);
           set({ error: error.message, loading: false });
           throw error;
         }
@@ -434,7 +458,8 @@ const useContactStore = create(
           });
           
           if (!response.ok) {
-            throw new Error('Failed to delete scheduled call');
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.detail || 'Failed to delete scheduled call');
           }
           
           set((state) => ({
@@ -442,6 +467,93 @@ const useContactStore = create(
             loading: false
           }));
         } catch (error) {
+          console.error('Error deleting scheduled call:', error);
+          set({ error: error.message, loading: false });
+          throw error;
+        }
+      },
+      
+      // Twilio calls actions
+      makeImmediateCall: async (callData) => {
+        try {
+          set({ loading: true, error: null });
+          
+          console.log('Making immediate call with data:', callData);
+          
+          const response = await fetch('http://localhost:8000/api/twilio-calls/initiate', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(callData),
+            credentials: 'include',
+          });
+          
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            console.error('Twilio call error response:', errorData);
+            throw new Error(errorData.detail || `HTTP ${response.status}: Failed to initiate call`);
+          }
+          
+          const result = await response.json();
+          console.log('Twilio call result:', result);
+          
+          set({ loading: false });
+          return result;
+        } catch (error) {
+          console.error('Error making immediate call:', error);
+          set({ error: error.message, loading: false });
+          throw error;
+        }
+      },
+      
+      // Dialogs actions
+      fetchContactDialogs: async (contactId) => {
+        try {
+          set({ loading: true, error: null });
+          
+          const response = await fetch(`http://localhost:8000/api/contacts/${contactId}/dialogs`, {
+            credentials: 'include',
+          });
+          
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.detail || 'Failed to fetch contact dialogs');
+          }
+          
+          const dialogs = await response.json();
+          set({ loading: false });
+          return dialogs;
+        } catch (error) {
+          console.error('Error fetching contact dialogs:', error);
+          set({ error: error.message, loading: false });
+          throw error;
+        }
+      },
+      
+      addContactDialog: async (contactId, dialogData) => {
+        try {
+          set({ loading: true, error: null });
+          
+          const response = await fetch(`http://localhost:8000/api/contacts/${contactId}/dialogs`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(dialogData),
+            credentials: 'include',
+          });
+          
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.detail || 'Failed to add contact dialog');
+          }
+          
+          const newDialog = await response.json();
+          set({ loading: false });
+          return newDialog;
+        } catch (error) {
+          console.error('Error adding contact dialog:', error);
           set({ error: error.message, loading: false });
           throw error;
         }
@@ -450,9 +562,9 @@ const useContactStore = create(
     {
       name: 'contact-storage',
       partialize: (state) => ({ 
-        // Не сохраняем чувствительные данные в localStorage
         contacts: state.contacts,
-        promptTemplates: state.promptTemplates
+        promptTemplates: state.promptTemplates,
+        scheduledCalls: state.scheduledCalls
       }),
     }
   )

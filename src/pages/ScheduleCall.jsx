@@ -17,7 +17,12 @@ export default function ScheduleCall() {
   
   const [formData, setFormData] = useState({
     contact_id: contactId ? parseInt(contactId) : '',
+    call_type: 'exact', // 'exact' или 'window'
     scheduled_time: '',
+    start_time_window: '',
+    end_time_window: '',
+    retry_until_success: false,
+    retry_interval: 60, // минуты между попытками
     script: contact?.script || '',
     notes: ''
   })
@@ -46,13 +51,33 @@ export default function ScheduleCall() {
       newErrors.contact_id = 'Kontakt je povinný'
     }
     
-    if (!formData.scheduled_time) {
-      newErrors.scheduled_time = 'Dátum a čas sú povinné'
+    if (formData.call_type === 'exact') {
+      if (!formData.scheduled_time) {
+        newErrors.scheduled_time = 'Dátum a čas sú povinné'
+      } else {
+        const scheduledTime = new Date(formData.scheduled_time)
+        const now = new Date()
+        if (scheduledTime < now) {
+          newErrors.scheduled_time = 'Dátum a čas musia byť v budúcnosti'
+        }
+      }
     } else {
-      const scheduledTime = new Date(formData.scheduled_time)
-      const now = new Date()
-      if (scheduledTime < now) {
-        newErrors.scheduled_time = 'Dátum a čas musia byť v budúcnosti'
+      if (!formData.start_time_window) {
+        newErrors.start_time_window = 'Začiatok časového okna je povinný'
+      }
+      if (!formData.end_time_window) {
+        newErrors.end_time_window = 'Koniec časového okna je povinný'
+      }
+      if (formData.start_time_window && formData.end_time_window) {
+        const start = new Date(formData.start_time_window)
+        const end = new Date(formData.end_time_window)
+        const now = new Date()
+        if (start < now) {
+          newErrors.start_time_window = 'Začiatok okna musí byť v budúcnosti'
+        }
+        if (end <= start) {
+          newErrors.end_time_window = 'Koniec okna musí byť neskôr ako začiatok'
+        }
       }
     }
     
@@ -61,10 +86,12 @@ export default function ScheduleCall() {
   }
 
   const handleChange = (e) => {
-    const { name, value } = e.target
+    const { name, value, type, checked } = e.target
+    const newValue = type === 'checkbox' ? checked : value
+    
     setFormData({
       ...formData,
-      [name]: value
+      [name]: newValue
     })
     
     // Очищаем ошибку при изменении поля
@@ -78,7 +105,7 @@ export default function ScheduleCall() {
 
   // Функция для применения шаблона
   const handleApplyTemplate = (templateId) => {
-    const template = promptTemplates.find(t => t.id === templateId)
+    const template = promptTemplates.find(t => t.id === parseInt(templateId))
     if (template) {
       setFormData({
         ...formData,
@@ -91,15 +118,31 @@ export default function ScheduleCall() {
     e.preventDefault()
     if (validateForm()) {
       try {
-        await addScheduledCall({
+        // Подготавливаем данные для отправки
+        const callData = {
           contact_id: parseInt(formData.contact_id),
-          scheduled_time: new Date(formData.scheduled_time).toISOString(),
+          call_type: formData.call_type,
           script: formData.script,
-          notes: formData.notes
-        })
+          notes: formData.notes,
+          retry_until_success: formData.retry_until_success,
+          retry_interval: formData.retry_interval
+        }
+        
+        // Добавляем временные данные в зависимости от типа звонка
+        if (formData.call_type === 'exact') {
+          callData.scheduled_time = formData.scheduled_time
+        } else {
+          callData.start_time_window = formData.start_time_window
+          callData.end_time_window = formData.end_time_window
+        }
+        
+        console.log('Submitting call data:', callData)
+        
+        await addScheduledCall(callData)
         navigate('/')
       } catch (err) {
         console.error('Error scheduling call:', err)
+        alert(`❌ Chyba plánovania hovoru: ${err.message}`)
       }
     }
   }
@@ -142,21 +185,139 @@ export default function ScheduleCall() {
             )}
           </div>
 
+          {/* Выбор типа звонка */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Dátum a čas hovoru *
+              Typ hovoru *
             </label>
-            <input
-              type="datetime-local"
-              name="scheduled_time"
-              value={formData.scheduled_time}
-              onChange={handleChange}
-              className={`input-field ${errors.scheduled_time ? 'border-red-500' : ''}`}
-              disabled={loading}
-              min={new Date().toISOString().slice(0, 16)}
-            />
-            {errors.scheduled_time && (
-              <p className="mt-1 text-sm text-red-600">{errors.scheduled_time}</p>
+            <div className="flex space-x-4">
+              <label className="inline-flex items-center">
+                <input
+                  type="radio"
+                  name="call_type"
+                  value="exact"
+                  checked={formData.call_type === 'exact'}
+                  onChange={handleChange}
+                  className="form-radio"
+                  disabled={loading}
+                />
+                <span className="ml-2">Presný čas</span>
+              </label>
+              <label className="inline-flex items-center">
+                <input
+                  type="radio"
+                  name="call_type"
+                  value="window"
+                  checked={formData.call_type === 'window'}
+                  onChange={handleChange}
+                  className="form-radio"
+                  disabled={loading}
+                />
+                <span className="ml-2">Časové okno</span>
+              </label>
+            </div>
+          </div>
+
+          {/* Конкретное время звонка */}
+          {formData.call_type === 'exact' && (
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Presný dátum a čas hovoru *
+              </label>
+              <input
+                type="datetime-local"
+                name="scheduled_time"
+                value={formData.scheduled_time}
+                onChange={handleChange}
+                className={`input-field ${errors.scheduled_time ? 'border-red-500' : ''}`}
+                disabled={loading}
+                min={new Date().toISOString().slice(0, 16)}
+              />
+              {errors.scheduled_time && (
+                <p className="mt-1 text-sm text-red-600">{errors.scheduled_time}</p>
+              )}
+            </div>
+          )}
+
+          {/* Временное окно */}
+          {formData.call_type === 'window' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Začiatok časového okna *
+                </label>
+                <input
+                  type="datetime-local"
+                  name="start_time_window"
+                  value={formData.start_time_window}
+                  onChange={handleChange}
+                  className={`input-field ${errors.start_time_window ? 'border-red-500' : ''}`}
+                  disabled={loading}
+                  min={new Date().toISOString().slice(0, 16)}
+                />
+                {errors.start_time_window && (
+                  <p className="mt-1 text-sm text-red-600">{errors.start_time_window}</p>
+                )}
+              </div>
+              
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Koniec časového okna *
+                </label>
+                <input
+                  type="datetime-local"
+                  name="end_time_window"
+                  value={formData.end_time_window}
+                  onChange={handleChange}
+                  className={`input-field ${errors.end_time_window ? 'border-red-500' : ''}`}
+                  disabled={loading}
+                  min={formData.start_time_window}
+                />
+                {errors.end_time_window && (
+                  <p className="mt-1 text-sm text-red-600">{errors.end_time_window}</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Опция повторных звонков */}
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <label className="inline-flex items-center">
+              <input
+                type="checkbox"
+                name="retry_until_success"
+                checked={formData.retry_until_success}
+                onChange={handleChange}
+                className="form-checkbox"
+                disabled={loading}
+              />
+              <span className="ml-2 text-sm font-medium text-gray-700">
+                Opakovať hovory, kým sa nepodarí dostať sa k klientovi
+              </span>
+            </label>
+            <p className="mt-1 text-sm text-gray-600">
+              Ak hovor zlyhá, systém automaticky skúsi zavolať znova
+            </p>
+            
+            {formData.retry_until_success && (
+              <div className="mt-3">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Interval opakovania (minúty)
+                </label>
+                <select
+                  name="retry_interval"
+                  value={formData.retry_interval}
+                  onChange={handleChange}
+                  className="input-field"
+                  disabled={loading}
+                >
+                  <option value={30}>Každých 30 minút</option>
+                  <option value={60}>Každú hodinu</option>
+                  <option value={120}>Každé 2 hodiny</option>
+                  <option value={240}>Každé 4 hodiny</option>
+                  <option value={1440}>Raz denne</option>
+                </select>
+              </div>
             )}
           </div>
 
@@ -186,27 +347,22 @@ export default function ScheduleCall() {
 
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Skript
+              Skript (voliteľné)
             </label>
             <textarea
               name="script"
               value={formData.script}
               onChange={handleChange}
-              rows={6}
+              rows={4}
               className="input-field"
-              placeholder="Skript pre hovor..."
+              placeholder="Napíšte skript, ktorý bude agent používať pri hovore..."
               disabled={loading}
             />
-            {contact && contact.script && (
-              <p className="mt-1 text-sm text-gray-500">
-                Automaticky načítaný skript z kontaktu: {contact.name}
-              </p>
-            )}
           </div>
 
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Poznámky
+              Poznámky (voliteľné)
             </label>
             <textarea
               name="notes"
@@ -214,7 +370,7 @@ export default function ScheduleCall() {
               onChange={handleChange}
               rows={3}
               className="input-field"
-              placeholder="Poznámky k hovoru..."
+              placeholder="Doplňujúce poznámky k hovoru..."
               disabled={loading}
             />
           </div>
@@ -222,7 +378,7 @@ export default function ScheduleCall() {
           <div className="flex space-x-4 pt-6">
             <button
               type="button"
-              onClick={() => navigate(-1)}
+              onClick={() => navigate('/')}
               className="btn btn-secondary"
               disabled={loading}
             >
