@@ -1,5 +1,10 @@
-// src/App.jsx
-import { useState, useEffect } from 'react'
+// src/App.jsx (обновленный фрагмент)
+
+import React, { useState, useEffect } from 'react'
+import useContactStore from './store/useContactStore'
+
+
+
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import Navbar from './components/Navbar'
 import Home from './pages/Home'
@@ -9,17 +14,21 @@ import ViewContact from './pages/ViewContact'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import PromptTemplates from './pages/PromptTemplates'
-import useContactStore from './store/useContactStore'
 import ScheduleCall from './pages/ScheduleCall'
 import ScheduledCalls from './pages/ScheduledCalls'
+import AddGroup from './pages/AddGroup'  // ← Добавлено
+import Groups from './pages/Groups'      // ← Добавлено
+import ScheduleGroupCall from './pages/ScheduleGroupCall'  // ← Добавлено
+import ScheduledGroupCalls from './pages/ScheduledGroupCalls'
 
+import EditGroup from './pages/EditGroup'  // ← Добавлено
+import ViewGroup from './pages/ViewGroup'  // ← Добавлено
 
 
 function App() {
   const [isLoading, setIsLoading] = useState(true)
   const isAuthenticated = useContactStore((state) => state.isAuthenticated)
   const fetchCurrentUser = useContactStore((state) => state.fetchCurrentUser)
-  const fetchContacts = useContactStore((state) => state.fetchContacts) // ← Добавлено
 
   useEffect(() => {
     const initAuth = async () => {
@@ -29,13 +38,6 @@ function App() {
     
     initAuth()
   }, [fetchCurrentUser])
-
-  // ← Добавлен новый useEffect для загрузки контактов
-  useEffect(() => {
-    if (isAuthenticated) {
-      fetchContacts()
-    }
-  }, [isAuthenticated, fetchContacts])
 
   if (isLoading) {
     return (
@@ -78,6 +80,35 @@ function App() {
               path="/view/:id" 
               element={isAuthenticated ? <ViewContact /> : <Navigate to="/login" />} 
             />
+            {/* Новые маршруты для групп */}
+            <Route 
+              path="/groups" 
+              element={isAuthenticated ? <Groups /> : <Navigate to="/login" />} 
+            />
+            <Route 
+              path="/add-group" 
+              element={isAuthenticated ? <AddGroup /> : <Navigate to="/login" />} 
+            />
+            <Route 
+              path="/edit-group/:id" 
+              element={isAuthenticated ? <EditGroup /> : <Navigate to="/login" />} 
+            />
+            <Route 
+              path="/view-group/:id" 
+              element={isAuthenticated ? <ViewGroup /> : <Navigate to="/login" />} 
+            />
+            <Route 
+              path="/schedule-group-call" 
+              element={isAuthenticated ? <ScheduleGroupCall /> : <Navigate to="/login" />} 
+            />
+            <Route 
+              path="/schedule-group-call/:groupId/" 
+              element={isAuthenticated ? <ScheduleGroupCall /> : <Navigate to="/login" />} 
+            />
+             <Route 
+              path="/scheduled-group-calls" 
+              element={isAuthenticated ? <ScheduledGroupCalls /> : <Navigate to="/login" />} 
+            />
             <Route 
               path="/prompt-templates" 
               element={isAuthenticated ? <PromptTemplates /> : <Navigate to="/login" />} 
@@ -94,6 +125,7 @@ function App() {
               path="/schedule-call/:contactId" 
               element={isAuthenticated ? <ScheduleCall /> : <Navigate to="/login" />} 
             />
+
           </Routes>
         </main>
       </div>

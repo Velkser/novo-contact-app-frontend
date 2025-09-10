@@ -14,11 +14,17 @@ const useContactStore = create(
       // Contacts state
       contacts: [],
       
+      // Groups state
+      groups: [],
+      
       // Prompt templates state
       promptTemplates: [],
       
       // Scheduled calls state
       scheduledCalls: [],
+
+      // Scheduled calls state
+      scheduledGroupCalls: [],
 
       // Auth actions
       login: async (credentials) => {
@@ -198,6 +204,299 @@ const useContactStore = create(
             loading: false
           }));
         } catch (error) {
+          set({ error: error.message, loading: false });
+          throw error;
+        }
+      },
+
+      // Groups actions
+      fetchGroups: async () => {
+        try {
+          set({ loading: true, error: null });
+          const response = await fetch('http://localhost:8000/api/groups/groups/', {
+            credentials: 'include',
+          });
+          
+          if (!response.ok) {
+            throw new Error('Failed to fetch groups');
+          }
+          
+          const groups = await response.json();
+          set({ groups, loading: false });
+        } catch (error) {
+          console.error('Error fetching groups:', error);
+          set({ error: error.message, loading: false });
+        }
+      },
+      
+      addGroup: async (groupData) => {
+        try {
+          set({ loading: true, error: null });
+          const response = await fetch('http://localhost:8000/api/groups/groups/', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(groupData),
+            credentials: 'include',
+          });
+          
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.detail || 'Failed to add group');
+          }
+          
+          const newGroup = await response.json();
+          set((state) => ({
+            groups: [...state.groups, newGroup],
+            loading: false
+          }));
+          return newGroup;
+        } catch (error) {
+          set({ error: error.message, loading: false });
+          throw error;
+        }
+      },
+      
+      updateGroup: async (id, groupData) => {
+        try {
+          set({ loading: true, error: null });
+          const response = await fetch(`http://localhost:8000/api/groups/groups/${id}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(groupData),
+            credentials: 'include',
+          });
+          
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.detail || 'Failed to update group');
+          }
+          
+          const group = await response.json();
+          set((state) => ({
+            groups: state.groups.map((g) => 
+              g.id === id ? group : g
+            ),
+            loading: false
+          }));
+          return group;
+        } catch (error) {
+          set({ error: error.message, loading: false });
+          throw error;
+        }
+      },
+      
+      deleteGroup: async (id) => {
+        try {
+          set({ loading: true, error: null });
+          const response = await fetch(`http://localhost:8000/api/groups/groups/${id}`, {
+            method: 'DELETE',
+            credentials: 'include',
+          });
+          
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.detail || 'Failed to delete group');
+          }
+          
+          set((state) => ({
+            groups: state.groups.filter((g) => g.id !== id),
+            loading: false
+          }));
+        } catch (error) {
+          set({ error: error.message, loading: false });
+          throw error;
+        }
+      },
+      
+      // Group members actions
+      addGroupMember: async (groupId, memberData) => {
+        try {
+          set({ loading: true, error: null });
+          const response = await fetch(`http://localhost:8000/api/groups/groups/${groupId}/members`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(memberData),
+            credentials: 'include',
+          });
+          
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.detail || 'Failed to add group member');
+          }
+          
+          const newMember = await response.json();
+          
+          // Обновляем группу с новым участником
+          const updatedGroup = await fetch(`http://localhost:8000/api/groups/groups/${groupId}`, {
+            credentials: 'include',
+          }).then(res => res.json());
+          
+          set((state) => ({
+            groups: state.groups.map((g) => 
+              g.id === groupId ? updatedGroup : g
+            ),
+            loading: false
+          }));
+          
+          return newMember;
+        } catch (error) {
+          set({ error: error.message, loading: false });
+          throw error;
+        }
+      },
+      
+      removeGroupMember: async (groupId, memberId) => {
+        try {
+          set({ loading: true, error: null });
+          const response = await fetch(`http://localhost:8000/api/groups/groups/${groupId}/members/${memberId}`, {
+            method: 'DELETE',
+            credentials: 'include',
+          });
+          
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.detail || 'Failed to remove group member');
+          }
+          
+          // Обновляем группу без участника
+          const updatedGroup = await fetch(`http://localhost:8000/api/groups/groups/${groupId}`, {
+            credentials: 'include',
+          }).then(res => res.json());
+          
+          set((state) => ({
+            groups: state.groups.map((g) => 
+              g.id === groupId ? updatedGroup : g
+            ),
+            loading: false
+          }));
+        } catch (error) {
+          set({ error: error.message, loading: false });
+          throw error;
+        }
+      },
+
+      addScheduledGroupCall: async (callData) => {
+        try {
+          set({ loading: true, error: null });
+          
+          console.log('Scheduling group call with ', callData);
+          
+          const response = await fetch('http://localhost:8000/api/scheduled-group-calls/scheduled-group-calls/', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(callData),
+            credentials: 'include',
+          });
+          
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            console.error('Server error response:', errorData);
+            throw new Error(errorData.detail || `HTTP ${response.status}: Failed to schedule group call`);
+          }
+          
+          const newCall = await response.json();
+          console.log('Scheduled group call result:', newCall);
+          
+          set((state) => ({
+            scheduledCalls: [...state.scheduledCalls, newCall],
+            loading: false
+          }));
+          
+          return newCall;
+        } catch (error) {
+          console.error('Error scheduling group call:', error);
+          set({ error: error.message, loading: false });
+          throw error;
+        }
+      },
+      
+      // 🎯 Функция для получения запланированных звонков групп
+      fetchScheduledGroupCalls: async () => {
+        try {
+          set({ loading: true, error: null });
+          
+          const response = await fetch('http://localhost:8000/api/scheduled-group-calls/scheduled-group-calls/', {
+            credentials: 'include',
+          });
+          
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.detail || 'Failed to fetch scheduled group calls');
+          }
+          
+          const calls = await response.json();
+          set({ scheduledCalls: calls, loading: false });
+          return calls;
+        } catch (error) {
+          console.error('Error fetching scheduled group calls:', error);
+          set({ error: error.message, loading: false });
+          throw error;
+        }
+      },
+      
+      // 🎯 Функция для обновления запланированных звонков групп
+      updateScheduledGroupCall: async (id, callData) => {
+        try {
+          set({ loading: true, error: null });
+          
+          const response = await fetch(`http://localhost:8000/api/scheduled-group-calls/scheduled-group-calls/${id}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(callData),
+            credentials: 'include',
+          });
+          
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.detail || 'Failed to update scheduled group call');
+          }
+          
+          const call = await response.json();
+          set((state) => ({
+            scheduledCalls: state.scheduledCalls.map((c) => 
+              c.id === id ? call : c
+            ),
+            loading: false
+          }));
+          return call;
+        } catch (error) {
+          console.error('Error updating scheduled group call:', error);
+          set({ error: error.message, loading: false });
+          throw error;
+        }
+      },
+      
+      // 🎯 Функция для удаления запланированных звонков групп
+      deleteScheduledGroupCall: async (id) => {
+        try {
+          set({ loading: true, error: null });
+          
+          const response = await fetch(`http://localhost:8000/api/scheduled-group-calls/scheduled-group-calls/${id}`, {
+            method: 'DELETE',
+            credentials: 'include',
+          });
+          
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.detail || 'Failed to delete scheduled group call');
+          }
+          
+          set((state) => ({
+            scheduledCalls: state.scheduledCalls.filter((c) => c.id !== id),
+            loading: false
+          }));
+        } catch (error) {
+          console.error('Error deleting scheduled group call:', error);
           set({ error: error.message, loading: false });
           throw error;
         }
@@ -496,6 +795,7 @@ const useContactStore = create(
           throw error;
         }
       },
+
 
       // Twilio calls actions
       makeImmediateCall: async (callData) => {
