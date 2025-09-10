@@ -73,8 +73,9 @@ export default function ScheduledCalls() {
     <div className="max-w-6xl mx-auto">
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Запланированные звонки</h1>
-          <p className="text-gray-600 mt-1">Управление запланированными звонками</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Naplánované hovory</h1>
+          <p className="text-gray-600 mt-1">Správa naplánovaných hovorov</p>
+
         </div>
         <Link
           to="/schedule-call"

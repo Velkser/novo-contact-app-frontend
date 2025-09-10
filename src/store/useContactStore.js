@@ -393,14 +393,36 @@ const useContactStore = create(
           if (!response.ok) {
             // Получаем детали ошибки
             let errorDetail = 'Failed to schedule call';
+            
             try {
               const errorData = await response.json();
-              errorDetail = errorData.detail || errorData.message || JSON.stringify(errorData);
+              console.error('Server error response:', errorData);
+              
+              // Проверяем разные форматы ошибок
+              if (errorData.detail) {
+                if (typeof errorData.detail === 'string') {
+                  errorDetail = errorData.detail;
+                } else if (Array.isArray(errorData.detail)) {
+                  errorDetail = errorData.detail.join(', ');
+                } else if (typeof errorData.detail === 'object') {
+                  // Детальная валидация по полям
+                  const validationErrors = [];
+                  for (const [field, messages] of Object.entries(errorData.detail)) {
+                    if (Array.isArray(messages)) {
+                      validationErrors.push(`${field}: ${messages.join(', ')}`);
+                    } else {
+                      validationErrors.push(`${field}: ${messages}`);
+                    }
+                  }
+                  errorDetail = validationErrors.join('; ');
+                }
+              } else {
+                errorDetail = JSON.stringify(errorData);
+              }
             } catch (parseError) {
               errorDetail = `HTTP ${response.status}: ${response.statusText}`;
             }
             
-            console.error('Server error response:', await response.text().catch(() => ''));
             throw new Error(errorDetail);
           }
           
@@ -411,7 +433,7 @@ const useContactStore = create(
           }));
           return newCall;
         } catch (error) {
-          console.error('Error scheduling call:', error);
+          console.error('Error adding scheduled call:', error);
           set({ error: error.message, loading: false });
           throw error;
         }
@@ -428,19 +450,21 @@ const useContactStore = create(
             body: JSON.stringify(callData),
             credentials: 'include',
           });
-          
+
           if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
             throw new Error(errorData.detail || 'Failed to update scheduled call');
           }
-          
+
           const call = await response.json();
+
           set((state) => ({
-            scheduledCalls: state.scheduledCalls.map((c) => 
+            scheduledCalls: state.scheduledCalls.map((c) =>
               c.id === id ? call : c
             ),
-            loading: false
+            loading: false,
           }));
+
           return call;
         } catch (error) {
           console.error('Error updating scheduled call:', error);
@@ -456,15 +480,15 @@ const useContactStore = create(
             method: 'DELETE',
             credentials: 'include',
           });
-          
+
           if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
             throw new Error(errorData.detail || 'Failed to delete scheduled call');
           }
-          
+
           set((state) => ({
             scheduledCalls: state.scheduledCalls.filter((c) => c.id !== id),
-            loading: false
+            loading: false,
           }));
         } catch (error) {
           console.error('Error deleting scheduled call:', error);
@@ -472,7 +496,7 @@ const useContactStore = create(
           throw error;
         }
       },
-      
+
       // Twilio calls actions
       makeImmediateCall: async (callData) => {
         try {
